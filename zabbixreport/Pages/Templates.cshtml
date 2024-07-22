@@ -1,0 +1,60 @@
+﻿@page
+@model TemplatesModel
+@{
+    ViewData["Title"] = "Templates in Group PR";
+}
+
+<h2>Templates in Group "PR"</h2>
+
+@foreach (var template in Model.Templates)
+{
+    <h3>@template.name</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Название триггера</th>
+                <th>Критичность</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var trigger in Model.TemplateTriggers[template.templateid])
+            {
+                var items = Model.TemplateItems[template.templateid];
+                <tr>
+                    <td>@trigger.description</td>
+                    <td style="background-color:@GetPriorityColor(trigger.priority)">@GetPriorityName(trigger.priority)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@functions {
+    private string GetPriorityName(string priority)
+    {
+        return priority switch
+        {
+            "0" => "Not classified",
+            "1" => "Information",
+            "2" => "Warning",
+            "3" => "Average",
+            "4" => "High",
+            "5" => "Disaster",
+            _ => "Unknown",
+        };
+    }
+
+    private string GetPriorityColor(string priority)
+    {
+        return priority switch
+        {
+            "0" => "#D3D3D3", // Not classified - LightGray
+            "1" => "#00FF00", // Information - Green
+            "2" => "#FFFF00", // Warning - Yellow
+            "3" => "#FFA500", // Average - Orange
+            "4" => "#FF4500", // High - OrangeRed
+            "5" => "#FF0000", // Disaster - Red
+            _ => "#FFFFFF", // Default - White
+        };
+    }
+}

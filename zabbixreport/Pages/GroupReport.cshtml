@@ -1,0 +1,43 @@
+﻿@page "{groupName}"
+@model GroupReportModel
+@{
+    ViewData["Title"] = "Group Report";
+}
+
+<h2>Отчёт по состоянию серверов в группе: @Model.GroupName</h2>
+
+<div>Период формирования отчёта: @Model.ReportPeriod</div>
+
+@foreach (var host in Model.Hosts)
+{
+    <h3>Сервер: @host.name</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Название метрики</th>
+                <th>Значения за период</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var metric in Model.HostMetrics.ContainsKey(host.hostid) ? Model.HostMetrics[host.hostid] : new Dictionary<string, (object value, string status)>())
+            {
+                <tr>
+                    <td>@metric.Key</td>
+                    @{
+                        var (value, status) = metric.Value;
+                        var cssClass = status switch
+                        {
+                            "high" => "bg-danger",
+                            "medium" => "bg-warning",
+                            "low" => "bg-success",
+                            _ => ""
+                        };
+                    }
+                    <td class="@cssClass">
+                        @value
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

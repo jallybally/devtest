@@ -1,0 +1,84 @@
+﻿@page
+@model HostReportModel
+@{
+    ViewData["Title"] = "Host Report";
+}
+
+<h2>Host Report</h2>
+
+<form id="reportForm" method="post" asp-page="/GroupReport">
+    <div class="form-group">
+        <label for="startDate">Start Date:</label>
+        <input type="datetime-local" id="startDate" name="StartDate" class="form-control" required />
+    </div>
+    <div class="form-group">
+        <label for="endDate">End Date:</label>
+        <input type="datetime-local" id="endDate" name="EndDate" class="form-control" required />
+    </div>
+
+    <div class="form-group">
+        <label for="groupSelect">Select Group:</label>
+        <select id="groupSelect" name="GroupName" class="form-control">
+            <option value="all">Все</option>
+            @foreach (var group in Model.GroupHosts)
+            {
+                <option value="@group.Key">@group.Key</option>
+            }
+        </select>
+    </div>
+
+    <input type="hidden" id="groupAction" name="GroupAction" />
+
+    <button type="button" class="btn btn-primary" onclick="submitForm('generateReport')">Generate Report for Selected Group</button>
+    <button type="button" class="btn btn-secondary" onclick="submitForm('saveReport')">Save Report to File</button>
+
+</form>
+
+<div id="loadingMessage" style="display:none; margin-top: 20px;">
+    <p>Пожалуйста, подождите...</p>
+</div>
+
+@section Scripts {
+    <script>
+        function setDefaultDates() {
+            var currentDate = new Date();
+            var startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30);
+
+            var currentDateStr = currentDate.toISOString().slice(0, 16);
+            var startDateStr = startDate.toISOString().slice(0, 16);
+
+            document.getElementById("startDate").value = startDateStr;
+            document.getElementById("endDate").value = currentDateStr;
+        }
+
+        function submitForm(action) {
+            document.getElementById('groupAction').value = action;
+            document.getElementById('reportForm').submit();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            setDefaultDates();
+
+            document.getElementById('reportForm').addEventListener('submit', function (event) {
+                var startDateInput = document.getElementById("startDate").value;
+                var endDateInput = document.getElementById("endDate").value;
+
+                if (!startDateInput || !endDateInput) {
+                    // Если даты не установлены, не показывать сообщение о загрузке и не отправлять форму
+                    event.preventDefault();
+                    return;
+                }
+
+                var loadingMessage = document.getElementById("loadingMessage");
+                loadingMessage.style.display = "block";
+                var messages = ["Пожалуйста, подождите...", "Загрузка данных...", "Это может занять некоторое время..."];
+                var index = 0;
+                setInterval(function () {
+                    loadingMessage.innerHTML = "<p>" + messages[index] + "</p>";
+                    index = (index + 1) % messages.length;
+                }, 3000);
+            });
+        });
+    </script>
+}

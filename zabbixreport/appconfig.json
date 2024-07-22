@@ -1,0 +1,18 @@
+{
+  "Providers": [
+    {
+      "Source": {
+        "FileProvider": {
+          "UsePollingFileWatcher": false,
+          "UseActivePolling": false,
+          "Root": "D:\\Repos\\zabbixreport\\zabbixreport\\"
+        },
+        "Path": "appconfig.json",
+        "Optional": false,
+        "ReloadOnChange": true,
+        "ReloadDelay": 250,
+        "OnLoadException": null
+      }
+    }
+  ]
+}

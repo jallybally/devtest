@@ -1,0 +1,117 @@
+﻿@page
+@model zabbixreport.Pages.SettingsModel
+@{
+    ViewData["Title"] = "Настройки";
+}
+
+<h2>Settings</h2>
+
+<form method="post">
+@*     <div class="form-group">
+        <label for="zabbixServerUrl" data-toggle="tooltip" data-placement="top" title="Пример: http://zabbixforclients/zabbix/api_jsonrpc.php">Zabbix Server URL:</label>
+        <input type="text" id="zabbixServerUrl" name="Ссылка на Zabbix Server" value="@Model.ZabbixServerUrl" class="form-control" required />
+    </div>
+    <div class="form-group">
+        <label for="zabbixApiToken" data-toggle="tooltip" data-placement="top" title="API токен создаётся в настройках пользователя, в интерфейсе Zabbix">Zabbix API Token:</label>
+        <input type="text" id="zabbixApiToken" name="Токен Zabbix API" value="@Model.ZabbixApiToken" class="form-control" required />
+    </div>
+    <div class="form-group">
+        <label for="templateGroupId" data-toggle="tooltip" data-placement="top" title="На текущий момент ID группы 22">ID группы шаблонов PR:</label>
+        <input type="number" id="templateGroupId" name="TemplateGroupId" value="@Model.TemplateGroupId" class="form-control" required />
+    </div> *@
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div> <!-- Отображение ошибок валидации -->
+
+    <div class="form-group">
+        <label for="zabbixServerUrl" data-toggle="tooltip" data-placement="top" title="Пример: http://zabbixforclients/zabbix/api_jsonrpc.php">Zabbix Server URL:</label>
+        <input type="text" id="zabbixServerUrl" name="ZabbixServerUrl" asp-for="ZabbixServerUrl" class="form-control" required />
+        <span asp-validation-for="ZabbixServerUrl" class="text-danger"></span> <!-- Отображение ошибок валидации для поля -->
+    </div>
+    <div class="form-group">
+        <label for="zabbixApiToken" data-toggle="tooltip" data-placement="top" title="API токен создаётся в настройках пользователя, в интерфейсе Zabbix">Zabbix API Token:</label>
+        <input type="text" id="zabbixApiToken" name="ZabbixApiToken" asp-for="ZabbixApiToken" class="form-control" required />
+        <span asp-validation-for="ZabbixApiToken" class="text-danger"></span> <!-- Отображение ошибок валидации для поля -->
+    </div>
+    <div class="form-group">
+        <label for="templateGroupId" data-toggle="tooltip" data-placement="top" title="На текущий момент ID группы 22">ID группы шаблонов PR:</label>
+        <input type="number" id="templateGroupId" name="TemplateGroupId" asp-for="TemplateGroupId" class="form-control" required />
+        <span asp-validation-for="TemplateGroupId" class="text-danger"></span> <!-- Отображение ошибок валидации для поля -->
+    </div>
+
+    <h2>Выбор метрик для отображения в отчёте</h2>
+
+    @if (Model.TemplateItems != null && Model.TemplateItems.Count > 0)
+    {
+        <button type="button" id="toggleSelection" class="btn btn-secondary">Выбрать все / Снять выделение</button>
+        @foreach (var template in Model.Templates)
+        {
+            <h3>@template.name</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col"></th>
+                        <th scope="col">Название метрики</th>
+                    </tr>
+                </thead>
+                <tbody>
+                            @foreach (var item in Model.TemplateItems[template.templateid])
+                            {
+                        <tr>
+                            <td>
+                                <input type="checkbox" asp-for="@Model.SelectedItemsState[@item.Key]" class="item-checkbox" />
+                            </td>
+                            <td>
+                                <span class="checkbox-label">@item.Value</span>
+                            </td>
+                        </tr>
+                            }
+                            @foreach (var prototype in Model.TemplatePrototypes[template.templateid])
+                            {
+                        <tr>
+                            <td>
+                                <input type="checkbox" asp-for="@Model.SelectedItemsState[@prototype.itemid]" class="item-checkbox" />
+                            </td>
+                            <td>
+                                <span class="checkbox-label">@prototype.name</span>
+                            </td>
+                        </tr>
+                            }
+                </tbody>
+            </table>
+        }
+    }
+    else
+    {
+        <p>No items found for the specified template group.</p>
+    }
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+
+</form>
+
+@section Scripts {
+    <script>
+        document.getElementById('toggleSelection').addEventListener('click', function () {
+            var checkboxes = document.querySelectorAll('.item-checkbox');
+            var allChecked = true;
+
+            checkboxes.forEach(function (checkbox) {
+                if (!checkbox.checked) {
+                    allChecked = false;
+                }
+            });
+
+            checkboxes.forEach(function (checkbox) {
+                checkbox.checked = !allChecked;
+            });
+        });
+        document.querySelectorAll('.checkbox-label').forEach(function (label) {
+            label.addEventListener('click', function () {
+                var checkbox = this.closest('tr').querySelector('.item-checkbox');
+                checkbox.checked = !checkbox.checked;
+            });
+        });
+        // Инициализация Bootstrap Tooltip
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip()
+        });
+    </script>
+}
