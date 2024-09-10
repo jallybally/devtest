@@ -1,0 +1,118 @@
+@page
+@model zabbixreport.Pages.CreateNomenclatureModel
+@{
+    // Сериализуем список доступных работ в JSON
+    var availableWorksJson = System.Text.Json.JsonSerializer.Serialize(Model.AvailableWorks);
+}
+
+<form method="post">
+    <div>
+        <label for="Name">Наименование</label>
+        <input asp-for="Nomenclature.Name" />
+    </div>
+
+    <div>
+        <label for="HourlyRate">Цена часа</label>
+        <input asp-for="Nomenclature.HourlyRate" />
+    </div>
+
+    <div>
+        <label for="ServiceType">Тип услуги</label>
+        <select asp-for="Nomenclature.ServiceType" asp-items="@(new SelectList(Model.ServiceTypes))">
+            <option value="">Выберите тип услуги</option>
+        </select>
+    </div>
+
+    <div id="works-container">
+        <label>Работы</label>
+        @for (int i = 0; i < Model.Nomenclature.Works.Count; i++)
+        {
+            <div class="work-item">
+                <select asp-for="Nomenclature.Works[i].Name" asp-items="@(new SelectList(Model.AvailableWorks))">
+                    <option value="">Выберите работу</option>
+                </select>
+                <label>Количество часов</label>
+                <input asp-for="Nomenclature.Works[i].Hours" placeholder="Количество часов" type="text" />
+                <label>Количество в месяц</label>
+                <input asp-for="Nomenclature.Works[i].Quantity" placeholder="Количество" type="text" />
+
+                <button type="button" class="remove-work-button">-</button>
+            </div>
+        }
+    </div>
+
+    <button type="button" id="add-work-button">+</button>
+
+    <button type="submit">Сохранить</button>
+</form>
+
+@section Scripts {
+    <script>
+        var availableWorks = @Html.Raw(availableWorksJson);
+
+        document.getElementById('add-work-button').addEventListener('click', function () {
+            var container = document.getElementById('works-container');
+            var index = container.getElementsByClassName('work-item').length; // Правильный индекс
+
+            // Создаем новый элемент работы
+            var newWorkItem = document.createElement('div');
+            newWorkItem.className = 'work-item';
+
+            // Создаем select для выбора работы
+            var workSelect = document.createElement('select');
+            workSelect.name = `Nomenclature.Works[${index}].Name`; // Индекс
+            availableWorks.forEach(function(work) {
+                var option = document.createElement('option');
+                option.value = work;
+                option.textContent = work;
+                workSelect.appendChild(option);
+            });
+
+            // Создаем input для "Количество часов"
+            var hoursInput = document.createElement('input');
+            hoursInput.name = `Nomenclature.Works[${index}].Hours`; // Индекс
+            hoursInput.placeholder = "Количество часов";
+            hoursInput.type = "text";
+
+            // Создаем input для "Количество в месяц"
+            var quantityInput = document.createElement('input');
+            quantityInput.name = `Nomenclature.Works[${index}].Quantity`; // Индекс
+            quantityInput.placeholder = "Количество в месяц";
+            quantityInput.type = "text";
+
+            // Создаем кнопку для удаления работы
+            var removeButton = document.createElement('button');
+            removeButton.type = "button";
+            removeButton.className = "remove-work-button";
+            removeButton.textContent = "-";
+
+            // Добавляем все элементы в новый элемент работы
+            newWorkItem.appendChild(workSelect);
+            newWorkItem.appendChild(hoursInput);
+            newWorkItem.appendChild(quantityInput);
+            newWorkItem.appendChild(removeButton);
+
+            // Добавляем новый элемент работы в контейнер
+            container.appendChild(newWorkItem);
+        });
+
+
+        document.getElementById('works-container').addEventListener('click', function (e) {
+            if (e.target && e.target.className === 'remove-work-button') {
+                e.target.parentElement.remove();
+
+                // Обновляем индексы name атрибутов после удаления
+                var workItems = document.getElementsByClassName('work-item');
+                for (var i = 0; i < workItems.length; i++) {
+                    var selectElement = workItems[i].querySelector('select');
+                    var hoursInputElement = workItems[i].querySelector('input[name$="Hours"]');
+                    var quantityInputElement = workItems[i].querySelector('input[name$="Quantity"]');
+
+                    selectElement.name = `Nomenclature.Works[${i}].Name`;
+                    hoursInputElement.name = `Nomenclature.Works[${i}].Hours`;
+                    quantityInputElement.name = `Nomenclature.Works[${i}].Quantity`;
+                }
+            }
+        });
+    </script>
+}

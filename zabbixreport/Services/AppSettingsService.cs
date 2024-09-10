@@ -1,46 +1,56 @@
-﻿using System.Collections.Generic;
-using System.Text.Json;
-
-using Newtonsoft.Json;
+﻿using System.Threading.Tasks;
+using MongoDB.Driver;
+using Microsoft.Extensions.Options;
 
 namespace zabbixreport.Services
 {
     public class AppSettingsService
     {
-        private const string ConfigFilePath = "appconf.json";
-
-        private readonly ZabbixApiClient _zabbixApiClient;
+        private readonly IMongoCollection<AppSettings> _settingsCollection;
 
         public AppSettings Settings { get; private set; }
 
-        public AppSettingsService()
+        public AppSettingsService(IOptions<MongoDBSettings> mongoSettings)
         {
-            if (File.Exists(ConfigFilePath))
-            {
-                var json = File.ReadAllText(ConfigFilePath);
-                Settings = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(json);
-            }
-            else
+            var client = new MongoClient(mongoSettings.Value.ConnectionString);
+            var database = client.GetDatabase(mongoSettings.Value.DatabaseName);
+            _settingsCollection = database.GetCollection<AppSettings>("Settings");
+
+            LoadSettings().Wait(); // Загрузка настроек при инициализации
+        }
+
+        private async Task LoadSettings()
+        {
+            Settings = await _settingsCollection.Find(_ => true).FirstOrDefaultAsync();
+            if (Settings == null)
             {
                 Settings = new AppSettings();
-                SaveSettings();
+                await SaveSettings(); // Сохранение настроек по умолчанию, если они отсутствуют
             }
         }
 
-        public void UpdateSettings(AppSettings newSettings)
+        public async Task UpdateSettings(AppSettings newSettings)
         {
             Settings.ZabbixServerUrl = newSettings.ZabbixServerUrl;
             Settings.ZabbixApiToken = newSettings.ZabbixApiToken;
             Settings.TemplateGroupId = newSettings.TemplateGroupId;
             Settings.SelectedItems = newSettings.SelectedItems;
-            //Settings.ThresholdValues = newSettings.ThresholdValues;
-            SaveSettings();
+            Settings.ServiceTypes = newSettings.ServiceTypes;
+
+            await SaveSettings();
         }
 
-        private void SaveSettings()
+        private async Task SaveSettings()
         {
-            var json = System.Text.Json.JsonSerializer.Serialize(Settings, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(ConfigFilePath, json);
+            var existingSettings = await _settingsCollection.Find(_ => true).FirstOrDefaultAsync();
+            if (existingSettings == null)
+            {
+                await _settingsCollection.InsertOneAsync(Settings);
+            }
+            else
+            {
+                await _settingsCollection.ReplaceOneAsync(x => x.Id == existingSettings.Id, Settings);
+            }
         }
     }
 }

@@ -60,7 +60,7 @@ namespace zabbixreport.Pages
 
             if (groupName == "all")
             {
-                // Логика для обработки отчета по всем группам
+                // Р›РѕРіРёРєР° РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё РѕС‚С‡РµС‚Р° РїРѕ РІСЃРµРј РіСЂСѓРїРїР°Рј
                 return RedirectToPage("/GroupReport", new { groupName = "all", startDate = startDate, endDate = endDate });
             }
             else

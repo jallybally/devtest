@@ -1,51 +1,68 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-
 using zabbixreport.Services;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace zabbixreport.Pages
 {
     public class SettingsModel : PageModel
     {
-        private readonly AppSettingsService _appSettingsService;
+        private readonly MongoDBService _mongoDBService;
         private readonly ZabbixApiClient _zabbixApiClient;
 
-        public SettingsModel(AppSettingsService appSettingsService, ZabbixApiClient zabbixApiClient)
+        public SettingsModel(MongoDBService mongoDBService, ZabbixApiClient zabbixApiClient)
         {
-            _appSettingsService = appSettingsService;
+            _mongoDBService = mongoDBService;
             _zabbixApiClient = zabbixApiClient;
         }
+
         [BindProperty]
-        public List<string> SelectedItems { get; set; }
+        public List<string> ServiceTypes { get; set; } = new List<string>();
+
+        [BindProperty]
+        public List<string> Works {get; set; } = new List<string>();
+
         [BindProperty]
         public string ZabbixServerUrl { get; set; }
+
         [BindProperty]
         public string ZabbixApiToken { get; set; }
+
         [BindProperty]
         public int TemplateGroupId { get; set; }
+
         [BindProperty]
-        public AppSettings Settings { get; set; }
+        public List<string> SelectedItems { get; set; }
+
+        public List<Template> Templates { get; set; }
+
+        public Dictionary<string, Dictionary<string, string>> TemplateItems { get; set; }
+
+        public Dictionary<string, List<ItemPrototype>> TemplatePrototypes { get; set; }
+
         [BindProperty]
         public Dictionary<string, bool> SelectedItemsState { get; set; }
 
-        public List<Template> Templates { get; set; }
-        public List<HostGroup> HostGroups { get; set; }
-        public Dictionary<string, List<Trigger>> TemplateTriggers { get; set; }
-        public Dictionary<string, Dictionary<string, string>> TemplateItems { get; set; }
-        public Dictionary<string, List<ItemPrototype>> TemplatePrototypes { get; set; }
-
         public async Task OnGetAsync()
         {
-            var settings = _appSettingsService.Settings;
+            var settings = await _mongoDBService.GetSettingsAsync();
 
-            var selectedItems = settings.SelectedItems.ToHashSet();
+            if (settings == null)
+            {
+                settings = new AppSettings();
+            }
+
+            SelectedItems = settings.SelectedItems ?? new List<string>();
             SelectedItemsState = new Dictionary<string, bool>();
 
             ZabbixServerUrl = settings.ZabbixServerUrl;
             ZabbixApiToken = settings.ZabbixApiToken;
             TemplateGroupId = settings.TemplateGroupId;
 
-            Templates = await _zabbixApiClient.GetTemplatesInGroupAsync(settings.TemplateGroupId);
+            // Получаем шаблоны из Zabbix API
+            Templates = await _zabbixApiClient.GetTemplatesInGroupAsync(TemplateGroupId);
             TemplateItems = new Dictionary<string, Dictionary<string, string>>();
             TemplatePrototypes = new Dictionary<string, List<ItemPrototype>>();
 
@@ -53,58 +70,145 @@ namespace zabbixreport.Pages
             {
                 var items = await _zabbixApiClient.GetItemsByTemplateIdAsync(template.templateid);
                 TemplateItems[template.templateid] = items;
-                var itemPrototypes = await _zabbixApiClient.GetItemPrototypesByTemplateIdAsync(template.templateid);
+
                 var prototypes = await _zabbixApiClient.GetItemPrototypesByTemplateIdAsync(template.templateid);
                 TemplatePrototypes[template.templateid] = prototypes;
 
                 foreach (var item in items)
                 {
-                    if (selectedItems.Contains(item.Key))
-                    {
-                        SelectedItemsState[item.Key] = true;
-                    }
-                    else
-                    {
-                        SelectedItemsState[item.Key] = false;
-                    }
+                    SelectedItemsState[item.Key] = SelectedItems.Contains(item.Key);
                 }
+
                 foreach (var prototype in prototypes)
                 {
-                    SelectedItemsState[prototype.itemid] = settings.SelectedItems.Contains(prototype.itemid);
+                    SelectedItemsState[prototype.itemid] = SelectedItems.Contains(prototype.itemid);
                 }
             }
+
+
+            // Загрузка существующих типов услуг и других настроек
+            await LoadServiceTypes();
+            await LoadWorks();
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        /*
+        public async Task<IActionResult> OnPostAsync(string action)
         {
             if (!ModelState.IsValid)
             {
                 return Page();
             }
 
-            _appSettingsService.Settings.SelectedItems.Clear();
-
-            foreach (var (itemId, selected) in SelectedItemsState)
+            if (action == "UpdateAccounting")
             {
-                if (selected)
+                // Обработка данных из вкладки "Настройки учёта"
+                var updatedServiceTypes = Request.Form["ServiceTypes"].ToList();
+                ServiceTypes = updatedServiceTypes;
+
+                // Сохранение в базе данных
+                var settings = await _mongoDBService.GetSettingsAsync();
+
+                if (settings != null)
                 {
-                    _appSettingsService.Settings.SelectedItems.Add(itemId);
+                    settings.ServiceTypes = ServiceTypes;
+                    await _mongoDBService.SaveSettingsAsync(settings);
                 }
+                else
+                {
+                    settings = new AppSettings
+                    {
+                        ServiceTypes = ServiceTypes
+                    };
+                    await _mongoDBService.SaveSettingsAsync(settings);
+                }
+
+                // Перезагрузка данных после сохранения
+                await LoadServiceTypes();
+
+                // Перезагрузка страницы с активной вкладкой "настройки учёта"
+                return RedirectToPage(new { tab = "accounting" });
             }
+
+            // Обработка данных из вкладки "Настройки мониторинга"
+            var selectedItems = SelectedItemsState
+                .Where(kv => kv.Value)
+                .Select(kv => kv.Key)
+                .ToList();
 
             var newSettings = new AppSettings
             {
                 ZabbixServerUrl = ZabbixServerUrl,
                 ZabbixApiToken = ZabbixApiToken,
                 TemplateGroupId = TemplateGroupId,
-                SelectedItems = _appSettingsService.Settings.SelectedItems,
+                SelectedItems = selectedItems
             };
 
-            _appSettingsService.UpdateSettings(newSettings);
+            await _mongoDBService.SaveSettingsAsync(newSettings);
 
-            await OnGetAsync();
-
-            return Page();
+            // Перезагрузка страницы с активной вкладкой "настройки мониторинга"
+            return RedirectToPage(new { tab = "monitoring" });
         }
+        */
+
+        private async Task LoadServiceTypes()
+        {
+            var settings = await _mongoDBService.GetSettingsAsync();
+
+            if (settings != null)
+            {
+                ServiceTypes = settings.ServiceTypes ?? new List<string>();
+            }
+            else
+            {
+                ServiceTypes = new List<string>();
+            }
+        }
+
+        private async Task LoadWorks()
+        {
+            var settings = await _mongoDBService.GetSettingsAsync();
+
+            if (settings != null)
+            {
+                Works = settings.Works ?? new List<string>();
+            }
+            else
+            {
+                Works = new List<string>();
+            }
+        }
+        public async Task<IActionResult> OnPostAsync(string tab)
+        {
+            
+            if (!ModelState.IsValid)
+            {
+                // Возвращаемся на ту же вкладку, если данные недействительны
+                return RedirectToPage(new { tab });
+            }
+
+            // Получаем текущие настройки из базы данных
+            var settings = await _mongoDBService.GetSettingsAsync();
+
+            // Обновляем настройки на основе полученных данных
+            settings.ZabbixServerUrl = ZabbixServerUrl;
+            settings.ZabbixApiToken = ZabbixApiToken;
+            settings.TemplateGroupId = TemplateGroupId;
+
+            var selectedItems = SelectedItemsState
+                .Where(kv => kv.Value)
+                .Select(kv => kv.Key)
+                .ToList();
+
+            settings.SelectedItems = selectedItems;
+            settings.ServiceTypes = ServiceTypes;
+            settings.Works = Works;
+
+            // Сохраняем обновлённые настройки обратно в базу данных
+            await _mongoDBService.SaveSettingsAsync(settings);
+
+            // Возвращаемся на ту же вкладку после обновления
+            return RedirectToPage(new { tab });
+        }
+
     }
 }

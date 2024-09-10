@@ -1,0 +1,33 @@
+@page
+@model zabbixreport.Pages.NomenclatureIndexModel
+
+<h2>Список номенклатур</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Наименование</th>
+            <th>Цена часа</th>
+            <th>Тип услуги</th>
+            <th>Работы</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.Nomenclatures)
+        {
+            <tr>
+                <td>@item.Name</td>
+                <td>@item.HourlyRate руб.</td>
+                <td>@item.ServiceType</td>
+                <td>
+                    <ul>
+                        @foreach (var work in item.Works)
+                        {
+                            <li>@work.Name - @work.Hours часов, @work.Quantity шт./мес.</li>
+                        }
+                    </ul>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

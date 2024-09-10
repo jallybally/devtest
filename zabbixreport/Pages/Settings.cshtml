@@ -2,89 +2,123 @@
 @model zabbixreport.Pages.SettingsModel
 @{
     ViewData["Title"] = "Настройки";
+    var defaultTab = ViewData["tab"] ?? "monitoring"; // Устанавливаем вкладку по умолчанию
 }
 
-<h2>Settings</h2>
+<h2>Настройки</h2>
 
 <form method="post">
-@*     <div class="form-group">
-        <label for="zabbixServerUrl" data-toggle="tooltip" data-placement="top" title="Пример: http://zabbixforclients/zabbix/api_jsonrpc.php">Zabbix Server URL:</label>
-        <input type="text" id="zabbixServerUrl" name="Ссылка на Zabbix Server" value="@Model.ZabbixServerUrl" class="form-control" required />
-    </div>
-    <div class="form-group">
-        <label for="zabbixApiToken" data-toggle="tooltip" data-placement="top" title="API токен создаётся в настройках пользователя, в интерфейсе Zabbix">Zabbix API Token:</label>
-        <input type="text" id="zabbixApiToken" name="Токен Zabbix API" value="@Model.ZabbixApiToken" class="form-control" required />
-    </div>
-    <div class="form-group">
-        <label for="templateGroupId" data-toggle="tooltip" data-placement="top" title="На текущий момент ID группы 22">ID группы шаблонов PR:</label>
-        <input type="number" id="templateGroupId" name="TemplateGroupId" value="@Model.TemplateGroupId" class="form-control" required />
-    </div> *@
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div> <!-- Отображение ошибок валидации -->
+    <div>
+        <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link @(defaultTab == "monitoring" ? "active" : "")" id="monitoring-tab" data-bs-toggle="tab" href="#monitoring" role="tab" aria-controls="monitoring" aria-selected="@(defaultTab == "monitoring")">Настройки мониторинга</a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link @(defaultTab == "accounting" ? "active" : "")" id="accounting-tab" data-bs-toggle="tab" href="#accounting" role="tab" aria-controls="accounting" aria-selected="@(defaultTab == "accounting")">Настройки учёта</a>
+            </li>
+        </ul>
+        <div class="tab-content" id="settingsTabsContent">
+            <div class="tab-pane fade @(defaultTab == "monitoring" ? "show active" : "")" id="monitoring" role="tabpanel" aria-labelledby="monitoring-tab">
+                <h3>Настройки мониторинга</h3>
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-    <div class="form-group">
-        <label for="zabbixServerUrl" data-toggle="tooltip" data-placement="top" title="Пример: http://zabbixforclients/zabbix/api_jsonrpc.php">Zabbix Server URL:</label>
-        <input type="text" id="zabbixServerUrl" name="ZabbixServerUrl" asp-for="ZabbixServerUrl" class="form-control" required />
-        <span asp-validation-for="ZabbixServerUrl" class="text-danger"></span> <!-- Отображение ошибок валидации для поля -->
-    </div>
-    <div class="form-group">
-        <label for="zabbixApiToken" data-toggle="tooltip" data-placement="top" title="API токен создаётся в настройках пользователя, в интерфейсе Zabbix">Zabbix API Token:</label>
-        <input type="text" id="zabbixApiToken" name="ZabbixApiToken" asp-for="ZabbixApiToken" class="form-control" required />
-        <span asp-validation-for="ZabbixApiToken" class="text-danger"></span> <!-- Отображение ошибок валидации для поля -->
-    </div>
-    <div class="form-group">
-        <label for="templateGroupId" data-toggle="tooltip" data-placement="top" title="На текущий момент ID группы 22">ID группы шаблонов PR:</label>
-        <input type="number" id="templateGroupId" name="TemplateGroupId" asp-for="TemplateGroupId" class="form-control" required />
-        <span asp-validation-for="TemplateGroupId" class="text-danger"></span> <!-- Отображение ошибок валидации для поля -->
+                <div class="form-group">
+                    <label for="zabbixServerUrl" data-toggle="tooltip" data-placement="top" title="Пример: http://zabbixforclients/zabbix/api_jsonrpc.php">Zabbix Server URL:</label>
+                    <input type="text" id="zabbixServerUrl" name="ZabbixServerUrl" asp-for="ZabbixServerUrl" class="form-control" required />
+                    <span asp-validation-for="ZabbixServerUrl" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label for="zabbixApiToken" data-toggle="tooltip" data-placement="top" title="API токен создаётся в настройках пользователя, в интерфейсе Zabbix">Zabbix API Token:</label>
+                    <input type="text" id="zabbixApiToken" name="ZabbixApiToken" asp-for="ZabbixApiToken" class="form-control" required />
+                    <span asp-validation-for="ZabbixApiToken" class="text-danger"></span>
+                </div>
+                <div class="form-group">
+                    <label for="templateGroupId" data-toggle="tooltip" data-placement="top" title="На текущий момент ID группы 22">ID группы шаблонов PR:</label>
+                    <input type="number" id="templateGroupId" name="TemplateGroupId" asp-for="TemplateGroupId" class="form-control" required />
+                    <span asp-validation-for="TemplateGroupId" class="text-danger"></span>
+                </div>
+
+                <h2>Выбор метрик для отображения в отчёте</h2>
+
+                @if (Model.TemplateItems != null && Model.TemplateItems.Count > 0)
+                {
+                    <button type="button" id="toggleSelection" class="btn btn-secondary">Выбрать все / Снять выделение</button>
+                    @foreach (var template in Model.Templates)
+                    {
+                        <h3>@template.name</h3>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th scope="col"></th>
+                                    <th scope="col">Название метрики</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.TemplateItems[template.templateid])
+                                {
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" asp-for="@Model.SelectedItemsState[@item.Key]" class="item-checkbox" />
+                                        </td>
+                                        <td>
+                                            <span class="checkbox-label">@item.Value</span>
+                                        </td>
+                                    </tr>
+                                }
+                                @foreach (var prototype in Model.TemplatePrototypes[template.templateid])
+                                {
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" asp-for="@Model.SelectedItemsState[@prototype.itemid]" class="item-checkbox" />
+                                        </td>
+                                        <td>
+                                            <span class="checkbox-label">@prototype.name</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                }
+                else
+                {
+                    <p>No items found for the specified template group.</p>
+                }
+            </div>
+            <div class="tab-pane fade @(defaultTab == "accounting" ? "show active" : "")" id="accounting" role="tabpanel" aria-labelledby="accounting-tab">
+                <h3>Настройки учёта</h3>
+                <div id="service-types-container">
+                    <h3>Тип услуги</h3>
+                    @for (int i = 0; i < Model.ServiceTypes.Count; i++)
+                    {
+                        <div class="service-type-item">
+                            <input type="text" name="ServiceTypes[@i]" value="@Model.ServiceTypes[i]" />
+                            <button type="button" class="remove-service-type-button" data-index="@i">-</button>
+                        </div>
+                    }
+                <button type="button" id="add-service-type-button">+</button>
+                </div>
+                <div id="works-container">
+                    <h3>Работы</h3>
+                    @for (int i = 0; i < Model.Works.Count; i++)
+                    {
+                        <div class="works-item">
+                            <input type="text" name="Works[@i]" value="@Model.Works[i]" />
+                            <button type="button" class="remove-works-button" data-index="@i">-</button>
+                        </div>
+                    }
+                <button type="button" id="add-works-button">+</button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <h2>Выбор метрик для отображения в отчёте</h2>
+    <!-- Кнопки для обновления -->
+    <button type="submit" class="btn btn-primary" name="tab" value="monitoring">Обновить настройки</button>
 
-    @if (Model.TemplateItems != null && Model.TemplateItems.Count > 0)
-    {
-        <button type="button" id="toggleSelection" class="btn btn-secondary">Выбрать все / Снять выделение</button>
-        @foreach (var template in Model.Templates)
-        {
-            <h3>@template.name</h3>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th scope="col"></th>
-                        <th scope="col">Название метрики</th>
-                    </tr>
-                </thead>
-                <tbody>
-                            @foreach (var item in Model.TemplateItems[template.templateid])
-                            {
-                        <tr>
-                            <td>
-                                <input type="checkbox" asp-for="@Model.SelectedItemsState[@item.Key]" class="item-checkbox" />
-                            </td>
-                            <td>
-                                <span class="checkbox-label">@item.Value</span>
-                            </td>
-                        </tr>
-                            }
-                            @foreach (var prototype in Model.TemplatePrototypes[template.templateid])
-                            {
-                        <tr>
-                            <td>
-                                <input type="checkbox" asp-for="@Model.SelectedItemsState[@prototype.itemid]" class="item-checkbox" />
-                            </td>
-                            <td>
-                                <span class="checkbox-label">@prototype.name</span>
-                            </td>
-                        </tr>
-                            }
-                </tbody>
-            </table>
-        }
-    }
-    else
-    {
-        <p>No items found for the specified template group.</p>
-    }
-    <button type="submit" class="btn btn-primary">Сохранить</button>
-
+    <!-- Скрытое поле для хранения текущей вкладки -->
+    @*<input type="hidden" id="currentTab" name="currentTab" value="@defaultTab" />*@
+    <input type="hidden" name="tab" id="active-tab" value="accounting" />
 </form>
 
 @section Scripts {
@@ -103,15 +137,94 @@
                 checkbox.checked = !allChecked;
             });
         });
+
         document.querySelectorAll('.checkbox-label').forEach(function (label) {
             label.addEventListener('click', function () {
                 var checkbox = this.closest('tr').querySelector('.item-checkbox');
                 checkbox.checked = !checkbox.checked;
             });
         });
+
         // Инициализация Bootstrap Tooltip
         $(function () {
             $('[data-toggle="tooltip"]').tooltip()
         });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Активируем вкладку на основе значения текущей вкладки
+            var defaultTab = document.getElementById('currentTab').value;
+            if (defaultTab) {
+                var tabLink = document.querySelector(`a[href="#${defaultTab}"]`);
+                if (tabLink) {
+                    var tab = new bootstrap.Tab(tabLink);
+                    tab.show();
+                }
+            }
+        });
+
+        document.querySelectorAll('button[name="tab"]').forEach(button => {
+            button.addEventListener('click', function () {
+                document.getElementById('currentTab').value = this.value;
+            });
+        });
+
+        document.getElementById('add-service-type-button').addEventListener('click', function () {
+            var container = document.getElementById('service-types-container');
+            var index = container.querySelectorAll('.service-type-item').length;
+
+            var newServiceTypeItem = document.createElement('div');
+            newServiceTypeItem.className = 'service-type-item';
+
+            newServiceTypeItem.innerHTML = `
+                <input type="text" name="ServiceTypes[${index}]" placeholder="Новый тип услуги" class="service-type-input" />
+                <button type="button" class="remove-service-type-button" data-index="${index}">-</button>
+            `;
+
+            container.appendChild(newServiceTypeItem);
+        });
+
+        document.getElementById('add-works-button').addEventListener('click', function () {
+            var worksContainer = document.getElementById('works-container');
+            var index = worksContainer.querySelectorAll('.works-item').length;
+
+            var newWorksItem = document.createElement('div');
+            newWorksItem.className = 'works-item';
+
+            newWorksItem.innerHTML = `
+                <input type="text" name="Works[${index}]" placeholder="Новая работа" class="works-input" />
+                <button type="button" class="remove-works-button" data-index="${index}">-</button>
+            `;
+
+            worksContainer.appendChild(newWorksItem);
+        });
+
+        // Обработчик кликов по кнопкам удаления для всех кнопок с классом remove-service-type-button и remove-works-button
+        document.addEventListener('click', function (e) {
+            if (e.target && e.target.classList.contains('remove-service-type-button')) {
+                var container = document.getElementById('service-types-container');
+                container.removeChild(e.target.parentElement);
+
+                // Обновляем индексы после удаления
+                updateIndexes('.service-type-item', 'ServiceTypes');
+            }
+
+            if (e.target && e.target.classList.contains('remove-works-button')) {
+                var worksContainer = document.getElementById('works-container');
+                worksContainer.removeChild(e.target.parentElement);
+
+                // Обновляем индексы после удаления
+                updateIndexes('.works-item', 'Works');
+            }
+        });
+
+        // Функция для обновления индексов
+        function updateIndexes(itemClass, namePrefix) {
+            var items = document.querySelectorAll(itemClass);
+            items.forEach((item, i) => {
+                item.querySelector('input').name = `${namePrefix}[${i}]`;
+                item.querySelector('button').setAttribute('data-index', i);
+            });
+        }
+
     </script>
 }

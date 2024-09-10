@@ -1,0 +1,358 @@
+@page
+@model zabbixreport.Pages.CalculatorModel
+@{
+    ViewData["Title"] = "Калькулятор обслуживания";
+    var defaultTab = ViewData["tab"] ?? "calculator"; 
+    
+    var nomenclaturesJson = System.Text.Json.JsonSerializer.Serialize(Model.Nomenclatures.Select(n => new {
+        Id = n.Id.ToString(),  
+        Name = n.Name,
+        HourlyRate = n.HourlyRate,
+        Works = n.Works.Select(w => new {
+            Name = w.Name,
+            Hours = w.Hours,
+            Quantity = w.Quantity
+        }).ToList(),
+        ServiceType = n.ServiceType
+    }));
+}
+
+<h2>Калькулятор цены на обслуживание</h2>
+
+<!-- Вкладки навигации -->
+<ul class="nav nav-tabs" id="calculatorTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <a class="nav-link @(defaultTab == "calculator" ? "active" : "")" id="calculator-tab" data-bs-toggle="tab" href="#calculator" role="tab" aria-controls="calculator" aria-selected="@(defaultTab == "calculator")">Калькулятор</a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link @(defaultTab == "secondTab" ? "active" : "")" id="second-tab" data-bs-toggle="tab" href="#secondTab" role="tab" aria-controls="secondTab" aria-selected="@(defaultTab == "secondTab")">Вторая вкладка</a>
+    </li>
+</ul>
+
+<!-- Содержимое вкладок -->
+<div class="tab-content" id="calculatorTabsContent">
+    <!-- Первая вкладка с калькулятором -->
+    <div class="tab-pane fade @(defaultTab == "calculator" ? "show active" : "")" id="calculator" role="tabpanel" aria-labelledby="calculator-tab">
+        <!-- Старая таблица -->
+        <table id="service-calculator" class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Наименование</th>
+                    <th>Кол-во услуг</th>
+                    <th>Кол-во часов</th>
+                    <th>Цена</th>
+                </tr>
+            </thead>
+            <tbody id="calculator-body">
+                @foreach (var item in Model.Nomenclatures)
+                {
+                    <tr>
+                        <td>@item.Name</td>
+                        <td><input type="number" class="service-quantity" data-id="@item.Id.ToString()" value="0" /></td>
+                        <td class="service-hours" data-id="@item.Id.ToString()">0</td>
+                        <td class="service-price" data-id="@item.Id.ToString()">0</td>
+                    </tr>
+                }
+                <!-- Строка для общего количества часов -->
+                <tr>
+                    <td colspan="3" style="text-align: right; font-weight: bold;">Общее кол-во часов:</td>
+                    <td id="total-hours">0 ч. 0 мин.</td>
+                </tr>
+                <!-- Строка для общей суммы -->
+                <tr>
+                    <td colspan="3" style="text-align: right; font-weight: bold;">Общая сумма:</td>
+                    <td id="total-price">0</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Вторая вкладка с расширенным режимом -->
+    <div class="tab-pane fade @(defaultTab == "secondTab" ? "show active" : "")" id="secondTab" role="tabpanel" aria-labelledby="second-tab">
+        <h3>Расширенный режим</h3>
+
+        <!-- Поле для ввода цены часа сотрудника -->
+        <div class="mb-3">
+            <label for="employee-hourly-rate" class="form-label">Цена часа сотрудника</label>
+            <input type="number" id="employee-hourly-rate" class="form-control" value="1200" />
+        </div>
+
+        <!-- Таблица с новыми колонками -->
+        <table id="extended-service-calculator" class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Наименование</th>
+                    <th>Кол-во услуг</th>
+                    <th>Кол-во часов</th>
+                    <th>Цена</th>
+                    <th>Зарплатный фонд</th>
+                    <th>Подушка</th>
+                    <th>Прибыль</th>
+                    <th>ЗП Антон</th>
+                </tr>
+            </thead>
+            <tbody id="extended-calculator-body">
+                @foreach (var item in Model.Nomenclatures)
+                {
+                    <tr>
+                        <td>@item.Name</td>
+                        <td><input type="number" class="extended-service-quantity" data-id="@item.Id.ToString()" value="0" /></td>
+                        <td class="extended-service-hours" data-id="@item.Id.ToString()">0</td>
+                        <td class="extended-service-price" data-id="@item.Id.ToString()">0</td>
+                        <td class="extended-salary-fund" data-id="@item.Id.ToString()">0</td>
+                        <td class="extended-cushion" data-id="@item.Id.ToString()">0</td>
+                        <td class="extended-profit" data-id="@item.Id.ToString()">0</td>
+                        <td class="extended-anton-salary" data-id="@item.Id.ToString()">0</td>
+                    </tr>
+                }
+                <!-- Строки для итогов -->
+                <tr>
+                    <td colspan="7" style="text-align: right; font-weight: bold;">Общее кол-во часов:</td>
+                    <td id="extended-total-hours">0 ч. 0 мин.</td>
+                </tr>
+                <tr>
+                    <td colspan="7" style="text-align: right; font-weight: bold;">Общая сумма:</td>
+                    <td id="extended-total-price">0</td>
+                </tr>
+                <!-- Строки для общих сумм -->
+                <tr>
+                    <td colspan="7" style="text-align: right; font-weight: bold;">Общая сумма зарплатного фонда:</td>
+                    <td id="total-salary-fund">0</td>
+                </tr>
+                <tr>
+                    <td colspan="7" style="text-align: right; font-weight: bold;">Общая сумма подушки:</td>
+                    <td id="total-cushion">0</td>
+                </tr>
+                <tr>
+                    <td colspan="7" style="text-align: right; font-weight: bold;">Общая сумма прибыли:</td>
+                    <td id="total-profit">0</td>
+                </tr>
+                <tr>
+                    <td colspan="7" style="text-align: right; font-weight: bold;">Общая сумма ЗП Антон:</td>
+                    <td id="total-anton-salary">0</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+
+<script>
+    var nomenclatures = @Html.Raw(nomenclaturesJson);
+
+    // Оригинальные функции для первой вкладки
+    function calculateService(id, quantity) {
+        var nomenclature = nomenclatures.find(n => n.Id === id);
+        if (!nomenclature) return;
+        var time = calculateTotalHours(nomenclature.Works);
+        var totalHours = time.hours * quantity;
+        var totalMinutes = time.minutes * quantity;
+        var finalTime = normalizeTime(totalHours, totalMinutes);
+        var totalTimeInHours = finalTime.hours + (finalTime.minutes / 60);
+        var totalPrice = totalTimeInHours * nomenclature.HourlyRate;
+
+        document.querySelector(`.service-hours[data-id="${id}"]`).textContent = `${finalTime.hours} ч. ${finalTime.minutes} мин.`;
+        document.querySelector(`.service-price[data-id="${id}"]`).textContent = totalPrice.toFixed(2);
+
+        calculateTotalTime();
+        calculateTotalPrice();
+    }
+
+    function calculateTotalTime() {
+        var totalHours = 0;
+        var totalMinutes = 0;
+        document.querySelectorAll('.service-hours').forEach(function (hoursElement) {
+            var timeText = hoursElement.textContent.trim().split(' '); 
+            var hours = parseInt(timeText[0]) || 0;
+            var minutes = parseInt(timeText[2]) || 0;
+
+            totalHours += hours;
+            totalMinutes += minutes;
+        });
+        var finalTime = normalizeTime(totalHours, totalMinutes);
+        document.getElementById('total-hours').textContent = `${finalTime.hours} ч. ${finalTime.minutes} мин.`;
+    }
+
+    function calculateTotalPrice() {
+        var totalPrice = 0;
+        document.querySelectorAll('.service-price').forEach(function (priceElement) {
+            var price = parseFloat(priceElement.textContent) || 0;
+            totalPrice += price;
+        });
+        document.getElementById('total-price').textContent = totalPrice.toFixed(2);
+    }
+
+    function initializeCalculations() {
+        document.querySelectorAll('.service-quantity').forEach(function (input) {
+            var id = input.getAttribute('data-id');
+            var quantity = parseInt(input.value);
+            calculateService(id, quantity);
+            input.addEventListener('input', function () {
+                quantity = parseInt(input.value);
+                calculateService(id, quantity);
+            });
+        });
+        calculateTotalTime();
+        calculateTotalPrice();
+    }
+
+    // Функции для второй вкладки
+    // Функция для расчета суммы по всем строкам в колонках
+    function calculateExtendedTotals() {
+        var totalSalaryFund = 0;
+        var totalCushion = 0;
+        var totalProfit = 0;
+        var totalAntonSalary = 0;
+
+        document.querySelectorAll('.extended-salary-fund').forEach(function (element) {
+            totalSalaryFund += parseFloat(element.textContent) || 0;
+        });
+
+        document.querySelectorAll('.extended-cushion').forEach(function (element) {
+            totalCushion += parseFloat(element.textContent) || 0;
+        });
+
+        document.querySelectorAll('.extended-profit').forEach(function (element) {
+            totalProfit += parseFloat(element.textContent) || 0;
+        });
+
+        document.querySelectorAll('.extended-anton-salary').forEach(function (element) {
+            totalAntonSalary += parseFloat(element.textContent) || 0;
+        });
+
+        document.getElementById('total-salary-fund').textContent = totalSalaryFund.toFixed(2);
+        document.getElementById('total-cushion').textContent = totalCushion.toFixed(2);
+        document.getElementById('total-profit').textContent = totalProfit.toFixed(2);
+        document.getElementById('total-anton-salary').textContent = totalAntonSalary.toFixed(2);
+    }
+        // Функция для расчета услуги и обновления всех колонок
+    function calculateExtendedService(id, quantity) {
+        var nomenclature = nomenclatures.find(n => n.Id === id);
+        if (!nomenclature) return;
+        var time = calculateTotalHours(nomenclature.Works);
+        var totalHours = time.hours * quantity;
+        var totalMinutes = time.minutes * quantity;
+        var finalTime = normalizeTime(totalHours, totalMinutes);
+        var totalTimeInHours = finalTime.hours + (finalTime.minutes / 60);
+        var totalPrice = totalTimeInHours * nomenclature.HourlyRate;
+
+        document.querySelector(`.extended-service-hours[data-id="${id}"]`).textContent = `${finalTime.hours} ч. ${finalTime.minutes} мин.`;
+        document.querySelector(`.extended-service-price[data-id="${id}"]`).textContent = totalPrice.toFixed(2);
+
+        var employeeHourlyRate = parseFloat(document.getElementById('employee-hourly-rate').value) || 1200;
+        var salaryFund = employeeHourlyRate * totalHours;
+        var remainingAmount = totalPrice - salaryFund;
+        var cushion = remainingAmount / 3;
+        var profit = cushion;
+        var antonSalary = cushion;
+
+        document.querySelector(`.extended-salary-fund[data-id="${id}"]`).textContent = salaryFund.toFixed(2);
+        document.querySelector(`.extended-cushion[data-id="${id}"]`).textContent = cushion.toFixed(2);
+        document.querySelector(`.extended-profit[data-id="${id}"]`).textContent = profit.toFixed(2);
+        document.querySelector(`.extended-anton-salary[data-id="${id}"]`).textContent = antonSalary.toFixed(2);
+
+        calculateExtendedTotals();
+        calculateExtendedTotalTime();
+        calculateExtendedTotalPrice();
+    }
+
+    function calculateExtendedTotalTime() {
+        var totalHours = 0;
+        var totalMinutes = 0;
+        document.querySelectorAll('.extended-service-hours').forEach(function (hoursElement) {
+            var timeText = hoursElement.textContent.trim().split(' ');
+            var hours = parseInt(timeText[0]) || 0;
+            var minutes = parseInt(timeText[2]) || 0;
+
+            totalHours += hours;
+            totalMinutes += minutes;
+        });
+        var finalTime = normalizeTime(totalHours, totalMinutes);
+        document.getElementById('extended-total-hours').textContent = `${finalTime.hours} ч. ${finalTime.minutes} мин.`;
+    }
+
+    function calculateExtendedTotalPrice() {
+        var totalPrice = 0;
+        document.querySelectorAll('.extended-service-price').forEach(function (priceElement) {
+            var price = parseFloat(priceElement.textContent) || 0;
+            totalPrice += price;
+        });
+        document.getElementById('extended-total-price').textContent = totalPrice.toFixed(2);
+    }
+
+    function initializeExtendedCalculations() {
+        document.querySelectorAll('.extended-service-quantity').forEach(function (input) {
+            var id = input.getAttribute('data-id');
+            var quantity = parseInt(input.value);
+            calculateExtendedService(id, quantity);
+            input.addEventListener('input', function () {
+                quantity = parseInt(input.value);
+                calculateExtendedService(id, quantity);
+            });
+        });
+        document.getElementById('employee-hourly-rate').addEventListener('input', function () {
+            document.querySelectorAll('.extended-service-quantity').forEach(function (input) {
+                var id = input.getAttribute('data-id');
+                var quantity = parseInt(input.value);
+                calculateExtendedService(id, quantity);
+            });
+        });
+
+        calculateExtendedTotals();
+    }
+
+        // Функция для расчета зарплатного фонда, подушки, прибыли и ЗП Антона
+    function calculateExtendedFields(id, quantity, totalPrice) {
+        var employeeHourlyRate = parseFloat(document.getElementById('employee-hourly-rate').value);
+        var nomenclature = nomenclatures.find(n => n.Id === id);
+        if (!nomenclature) return;
+        
+        var time = calculateTotalHours(nomenclature.Works);
+        var totalHours = time.hours * quantity;
+        var totalMinutes = time.minutes * quantity;
+        var finalTime = normalizeTime(totalHours, totalMinutes);
+        
+        // Расчет зарплатного фонда
+        var salaryFund = employeeHourlyRate * finalTime.hours;
+
+        // Расчет оставшейся суммы (цена - зарплатный фонд)
+        var remainingSum = totalPrice - salaryFund;
+        
+        // Расчет подушки, прибыли и ЗП Антона
+        var cushion = remainingSum / 3;
+        var profit = remainingSum / 3;
+        var antonSalary = remainingSum / 3;
+
+        document.querySelector(`.extended-salary-fund[data-id="${id}"]`).textContent = salaryFund.toFixed(2);
+        document.querySelector(`.extended-cushion[data-id="${id}"]`).textContent = cushion.toFixed(2);
+        document.querySelector(`.extended-profit[data-id="${id}"]`).textContent = profit.toFixed(2);
+        document.querySelector(`.extended-anton-salary[data-id="${id}"]`).textContent = antonSalary.toFixed(2);
+    }
+
+    // Инициализация расчётов при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function () {
+        initializeCalculations(); // Для первой вкладки
+        initializeExtendedCalculations(); // Для второй вкладки
+    });
+
+    // Вспомогательные функции для работы с временем
+    function calculateTotalHours(works) {
+        var totalHours = 0;
+        var totalMinutes = 0;
+        works.forEach(function (work) {
+            totalHours += work.Hours * work.Quantity;
+        });
+        totalMinutes = totalHours * 60;
+        return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
+    }
+
+    function normalizeTime(hours, minutes) {
+        var totalMinutes = (hours * 60) + minutes;
+        var normalizedHours = Math.floor(totalMinutes / 60);
+        var normalizedMinutes = totalMinutes % 60;
+        return { hours: normalizedHours, minutes: normalizedMinutes };
+    }
+</script>
+
+}

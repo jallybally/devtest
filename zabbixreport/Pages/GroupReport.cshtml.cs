@@ -118,7 +118,7 @@ namespace zabbixreport.Pages
                         {
                             itemHistory[item.name] = history;
 
-                            if (item.name.Contains("ЦПУ количество ядер"))
+                            if (item.name.Contains("Р¦РџРЈ РєРѕР»РёС‡РµСЃС‚РІРѕ СЏРґРµСЂ"))
                             {
                                 var lastEntry = history.Last();
                                 if (double.TryParse(lastEntry.value, out double cores))
@@ -135,7 +135,7 @@ namespace zabbixreport.Pages
                         if (itemHistory.ContainsKey(item.name))
                         {
                             var history = itemHistory[item.name];
-                            if (item.name.Contains("Состояние службы"))
+                            if (item.name.Contains("РЎРѕСЃС‚РѕСЏРЅРёРµ СЃР»СѓР¶Р±С‹"))
                             {
                                 var serviceStates = history.Select(h => int.TryParse(h.value, out int state) && ServiceStateMapping.ContainsKey(state)
                                                                         ? ServiceStateMapping[state]
@@ -152,7 +152,7 @@ namespace zabbixreport.Pages
                                 }
                                 HostMetrics[host.hostid][item.name] = (serviceStates, metricStatus);
                             }
-                            else if (item.name.Contains("ЦПУ количество ядер"))
+                            else if (item.name.Contains("Р¦РџРЈ РєРѕР»РёС‡РµСЃС‚РІРѕ СЏРґРµСЂ"))
                             {
                                 var lastEntry = history.Last();
                                 if (double.TryParse(lastEntry.value, out double cores))
@@ -166,18 +166,12 @@ namespace zabbixreport.Pages
 
                                 foreach (var entry in history)
                                 {
-                                    //if (double.TryParse(entry.value, NumberStyles.Any, CultureInfo.InvariantCulture, out double result) ||
-                                    //    int.TryParse(entry.value, NumberStyles.Any, CultureInfo.InvariantCulture, out int intResult))
-                                    //{
-                                    //    values.Add(result); // `int` значения автоматически преобразуются в `double`
-                                    //}
-
-                                    // Пробуем сначала как double
+                                    // РџСЂРѕР±СѓРµРј СЃРЅР°С‡Р°Р»Р° РєР°Рє double
                                     if (double.TryParse(entry.value, NumberStyles.Any, CultureInfo.InvariantCulture, out double result))
                                     {
                                         values.Add(result);
                                     }
-                                    // Если не получилось, пробуем как int и преобразуем в double
+                                    // Р•СЃР»Рё РЅРµ РїРѕР»СѓС‡РёР»РѕСЃСЊ, РїСЂРѕР±СѓРµРј РєР°Рє int Рё РїСЂРµРѕР±СЂР°Р·СѓРµРј РІ double
                                     else if (int.TryParse(entry.value, NumberStyles.Any, CultureInfo.InvariantCulture, out int intResult))
                                     {
                                         values.Add(intResult);
@@ -187,31 +181,35 @@ namespace zabbixreport.Pages
                                 if (values.Count > 0)
                                 {
                                     values.Sort();
-                                    //double percentile95 = Math.Round(values[(int)(values.Count * 0.95)]);
                                     double percentile95 = Math.Round(CalculatePercentile(values, 0.95));
+                                    string units = string.Empty;
 
                                     if (!HostMetrics.ContainsKey(host.hostid))
                                     {
                                         HostMetrics[host.hostid] = new Dictionary<string, (object value, string status)>();
                                     }
 
-                                    if (item.name.Contains("ОЗУ") && !item.name.Contains('%'))
+                                    if (item.name.Contains("Uptime"))
                                     {
-                                        percentile95 = Math.Round(percentile95 / (1024 * 1024 * 1024), 2); // Convert bytes to GB
-                                    }
-                                    else if (item.name.Contains("FS") && !item.name.Contains('%'))
-                                    {
-                                        percentile95 = Math.Round(percentile95 / (1024 * 1024 * 1024), 2); // Convert bytes to GB
-                                    }
-
-                                    var metricStatus = DetermineMetricStatus(percentile95, item.name, cpuCores);
-                                    if (item.name.Contains("%") || item.name.Contains("утилизация"))
-                                    {
-                                        HostMetrics[host.hostid][item.name] = ($"{percentile95}%", metricStatus);
+                                        HostMetrics[host.hostid][item.name] = (ConvertUptime(values.Last()), "normal");
                                     }
                                     else
                                     {
-                                        HostMetrics[host.hostid][item.name] = (percentile95, metricStatus);
+
+                                        if ((item.name.Contains("РћР—РЈ") || item.name.Contains("FS")) && (!item.name.Contains('%') || !item.name.Contains("СѓС‚РёР»РёР·Р°С†РёСЏ")))
+                                        {
+                                            percentile95 = Math.Round(Math.Round(percentile95 / (1024 * 1024 * 1024), 2)); // Convert bytes to GB
+                                            units = "Р“Р‘";
+                                        }
+                                         
+                                        if (item.name.Contains("%") || item.name.Contains("СѓС‚РёР»РёР·Р°С†РёСЏ"))
+                                        {
+                                            units = "%";
+                                        }
+    
+                                        var metricStatus = DetermineMetricStatus(percentile95, item.name, cpuCores);
+    
+                                        HostMetrics[host.hostid][item.name] = ($"{percentile95} {units}", metricStatus);
                                     }
                                 }
                             }
@@ -270,10 +268,10 @@ namespace zabbixreport.Pages
         {
             foreach (var pattern in selectedItemNames)
             {
-                // Преобразуем шаблон {#VARIABLE} в .*
+                // РџСЂРµРѕР±СЂР°Р·СѓРµРј С€Р°Р±Р»РѕРЅ {#VARIABLE} РІ .*
                 var regexPattern = "^" + ReplaceVariablesWithWildcard(pattern) + "$";
 
-                // Проверка совпадения с использованием регулярного выражения
+                // РџСЂРѕРІРµСЂРєР° СЃРѕРІРїР°РґРµРЅРёСЏ СЃ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРµРј СЂРµРіСѓР»СЏСЂРЅРѕРіРѕ РІС‹СЂР°Р¶РµРЅРёСЏ
                 if (Regex.IsMatch(itemName, regexPattern))
                 {
                     return true;
@@ -284,17 +282,25 @@ namespace zabbixreport.Pages
 
         private string ReplaceVariablesWithWildcard(string pattern)
         {
-            // Найдем все подстроки вида {#VARIABLE} и заменим их на .*
-            //var regex = new Regex(@"\{\#\w+\}");
-            //var result = regex.Replace(pattern, ".*");
+            // РќР°Р№РґРµРј РІСЃРµ РїРѕРґСЃС‚СЂРѕРєРё РІРёРґР° {#VARIABLE} Рё Р·Р°РјРµРЅРёРј РёС… РЅР° .*
 
             var regex = new Regex(@"\{\#\w+(\.\w+)?\}");
             var result = regex.Replace(pattern, ".*");
 
-            // Экранируем все специальные символы кроме .*
+            // Р­РєСЂР°РЅРёСЂСѓРµРј РІСЃРµ СЃРїРµС†РёР°Р»СЊРЅС‹Рµ СЃРёРјРІРѕР»С‹ РєСЂРѕРјРµ .*
             result = Regex.Escape(result).Replace(@"\.\*", ".*");
 
             return result;
+        }
+
+        private static string ConvertUptime(double uptimeInSeconds)
+        {
+            TimeSpan uptime = TimeSpan.FromSeconds(uptimeInSeconds);
+
+            // Р¤РѕСЂРјР°С‚РёСЂРѕРІР°РЅРёРµ РІ СЃС‚СЂРѕРєСѓ
+            string formattedUptime = $"{uptime.Days} РґРЅРµР№, {uptime.Hours} С‡Р°СЃРѕРІ, {uptime.Minutes} РјРёРЅСѓС‚, {uptime.Seconds} СЃРµРєСѓРЅРґ";
+
+            return formattedUptime;
         }
 
         private string DetermineMetricStatus(object value, string metricName, double cpuCores)
@@ -316,7 +322,7 @@ namespace zabbixreport.Pages
                         return "low";
                     }
                 }
-                else if (metricName.Contains("ЦПУ длинна очереди"))
+                else if (metricName.Contains("Р¦РџРЈ РґР»РёРЅРЅР° РѕС‡РµСЂРµРґРё"))
                 {
                     if (doubleValue == cpuCores)
                     {
@@ -331,7 +337,7 @@ namespace zabbixreport.Pages
                         return "normal";
                     }
                 }
-                else if (metricName.Contains("ОЗУ утилизация"))
+                else if (metricName.Contains("РћР—РЈ СѓС‚РёР»РёР·Р°С†РёСЏ"))
                 {
                     if (doubleValue > 95)
                     {
@@ -346,7 +352,7 @@ namespace zabbixreport.Pages
                         return "normal";
                     }
                 }
-                else if (metricName.Contains("ЦПУ iowait"))
+                else if (metricName.Contains("Р¦РџРЈ iowait"))
                 {
                     if (doubleValue > 20)
                     {
@@ -361,7 +367,7 @@ namespace zabbixreport.Pages
                         return "normal";
                     }
                 }
-                else if (metricName.Contains("Занято места %"))
+                else if (metricName.Contains("Р—Р°РЅСЏС‚Рѕ РјРµСЃС‚Р° %"))
                 {
                     if (doubleValue > 90)
                     {
@@ -377,7 +383,7 @@ namespace zabbixreport.Pages
                     }
                 }
             }
-            else if (value is string stringValue && metricName.Contains("Состояние службы"))
+            else if (value is string stringValue && metricName.Contains("РЎРѕСЃС‚РѕСЏРЅРёРµ СЃР»СѓР¶Р±С‹"))
             {
                 if (stringValue == "Running")
                 {

@@ -5,7 +5,7 @@
         "FileProvider": {
           "UsePollingFileWatcher": false,
           "UseActivePolling": false,
-          "Root": "D:\\Repos\\zabbixreport\\zabbixreport\\"
+          "Root": "/mnt/data/zabbixreport/zabbixreport/zabbixreport/"
         },
         "Path": "appconfig.json",
         "Optional": false,
